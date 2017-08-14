@@ -25,11 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 
 import javax.sql.DataSource;
 import java.sql.*;
-import java.text.DecimalFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.*;
-import java.util.Date;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BiFunction;
@@ -374,6 +370,10 @@ public class JdbcBasisDataProvider extends DataProvider implements Aggregatable,
 
     @Override
     public AggregateResult queryAggData(AggConfig config) throws Exception {
+        String[] checkRes = checkAndFilter(config);
+        String onlyYear = checkRes[4];
+        int limitDimCnt = "true".equals(onlyYear) ? 2 : 3;
+
         String exec = getQueryAggDataSql(config);
         List<String[]> list = new LinkedList<>();
         LOG.info(exec);
@@ -388,8 +388,8 @@ public class JdbcBasisDataProvider extends DataProvider implements Aggregatable,
         ) {
             ResultSetMetaData metaData = rs.getMetaData();
             int columnCount = metaData.getColumnCount();
-            if (columnCount < 3) {
-                throw new Exception("计算同比或环比维度个数不能低于3个，并且必须保证维度顺序<年, 月, 环比, 同比, 实际数值>");
+            if (columnCount < limitDimCnt) {
+                throw new Exception("计算同比或环比维度个数不能低于" + limitDimCnt + "个，并且必须保证维度顺序<年, 月, 环比, 同比, 实际数值>");
             }
 
             while (rs.next()) {
@@ -399,7 +399,12 @@ public class JdbcBasisDataProvider extends DataProvider implements Aggregatable,
                 }
                 list.add(row);
 
-                orderedAggDataMap.put(row[0] + row[1], row);
+                if ("true".equals(onlyYear)) {
+                    orderedAggDataMap.put(row[0], row);
+                } else {
+                    orderedAggDataMap.put(row[0] + row[1], row);
+                }
+
             }
         } catch (Exception e) {
             LOG.error("ERROR:" + e.getMessage());
@@ -419,109 +424,10 @@ public class JdbcBasisDataProvider extends DataProvider implements Aggregatable,
         });
 
         // String[][] result = list.toArray(new String[][]{});
-        String[][] result = getOrderedAggResult(orderedAggDataMap, dimensionList.size());
+        String[][] result = getOrderedAggResult(orderedAggDataMap, dimensionList.size(), checkRes);
 
         // AggregateResult res = new AggregateResult(dimensionList, result);
         return new AggregateResult(dimensionList, result);
-    }
-
-    private String[][] getOrderedAggResult(TreeMap<String, Object> aggTreeMap, int dimCount) throws ParseException {
-        String firstKey = aggTreeMap.firstEntry().getKey();
-        Date firstYearMonth = new SimpleDateFormat("yyyyMM").parse(firstKey);
-
-        String lastKey = aggTreeMap.lastEntry().getKey();
-        Date lastYearMonth = new SimpleDateFormat("yyyyMM").parse(lastKey);
-        Calendar lastNextCalendar = Calendar.getInstance();
-        lastNextCalendar.setTime(lastYearMonth);
-        lastNextCalendar.add(Calendar.MONTH, 1);
-
-        Calendar iteratorCalendar = Calendar.getInstance();
-        iteratorCalendar.setTime(firstYearMonth);
-
-        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMM");
-        DecimalFormat decimalFormat=new DecimalFormat(".00");
-        List<String[]> resultArrayList = new ArrayList<>();
-
-        while (iteratorCalendar.getTime().before(lastNextCalendar.getTime())) {
-            // 获取当前月字符串
-            String currYearMonth = sdf.format(iteratorCalendar.getTime());
-
-            // 获取上个月
-            Calendar previousMonthCalendar = Calendar.getInstance();
-            previousMonthCalendar.setTime(iteratorCalendar.getTime());
-            previousMonthCalendar.add(Calendar.MONTH, -1);
-            String previousYearMonth = sdf.format(previousMonthCalendar.getTime());
-
-            // 获取去年的
-            Calendar lastYearCalendar = Calendar.getInstance();
-            lastYearCalendar.setTime(iteratorCalendar.getTime());
-            lastYearCalendar.add(Calendar.YEAR, -1);
-            String lastYear = sdf.format(lastYearCalendar.getTime());
-
-            // 计算
-            Object currRowObj = aggTreeMap.get(currYearMonth);
-            if (currRowObj == null) {
-                String[] newRow = getEmptyRow(currYearMonth, dimCount);
-                resultArrayList.add(newRow);
-            } else {
-                String[] currRowObj1 = (String[]) currRowObj;
-                String[] currRow = Arrays.copyOf(currRowObj1, currRowObj1.length);
-
-                float curr = Float.parseFloat(currRow[2]);
-                String emptyDefault = null;
-
-                // 环比
-                Object momRowObj = aggTreeMap.get(previousYearMonth);
-                if (momRowObj == null) {
-                    currRow[2] = emptyDefault;
-                } else {
-                    String[] momRow = (String[]) momRowObj;
-                    float previous = Float.parseFloat(momRow[2]);
-                    float mom = (int) previous != 0 ? ((curr - previous) * 100) / previous : 0.0f;
-                    currRow[2] = decimalFormat.format(mom);
-                }
-
-                // 同比
-                Object yoyRowObj = aggTreeMap.get(lastYear);
-                if (currRow.length >= 4) {
-                    if (yoyRowObj == null) {
-                        currRow[3] = emptyDefault;
-                    } else {
-                        String[] yoyRow = (String[]) yoyRowObj;
-                        float previousYear = Float.parseFloat(yoyRow[2]);
-                        float mom = (int) previousYear != 0 ? ((curr - previousYear) * 100) / previousYear : 0.0f;
-                        currRow[3] = decimalFormat.format(mom);
-                    }
-                }
-
-                resultArrayList.add(currRow);
-            }
-
-            // 最后递增月份，直到结束
-            iteratorCalendar.add(Calendar.MONTH, 1);
-        }
-
-        return resultArrayList.toArray(new String[][]{});
-    }
-
-    private String[] getEmptyRow(String yearMonth, int dimCount) {
-        String year = yearMonth.substring(0, 4);
-        String month = yearMonth.substring(4);
-        String emptyDefault = null;
-
-        if (dimCount == 3) {
-            return new String[]{year, month, emptyDefault};
-        }
-
-        if (dimCount == 4) {
-            return new String[]{year, month, emptyDefault, emptyDefault};
-        }
-
-        if (dimCount == 5) {
-            return new String[]{year, month, emptyDefault, emptyDefault, emptyDefault};
-        }
-
-        return new String[]{year, month, emptyDefault};
     }
 
     private String getQueryAggDataSql(AggConfig config) throws Exception {
