@@ -63,13 +63,15 @@ public class AdminController {
     @RequestMapping(value = "/saveNewUser")
     public String saveNewUser(@RequestParam(name = "user") String user) {
         JSONObject jsonObject = JSONObject.parseObject(user);
-        return adminSerivce.addUser(UUID.randomUUID().toString(), jsonObject.getString("loginName"), jsonObject.getString("userName"), jsonObject.getString("userPassword"));
+        return adminSerivce.addUser(UUID.randomUUID().toString(), jsonObject.getString("loginName"),
+                jsonObject.getString("userName"), jsonObject.getString("userPassword"), jsonObject.getString("branchName"));
     }
 
     @RequestMapping(value = "/updateUser")
     public String updateUser(@RequestParam(name = "user") String user) {
         JSONObject jsonObject = JSONObject.parseObject(user);
-        return adminSerivce.updateUser(jsonObject.getString("userId"), jsonObject.getString("loginName"), jsonObject.getString("userName"), jsonObject.getString("userPassword"));
+        return adminSerivce.updateUser(jsonObject.getString("userId"), jsonObject.getString("loginName"),
+                jsonObject.getString("userName"), jsonObject.getString("userPassword"), jsonObject.getString("branchName"));
     }
 
     @RequestMapping(value = "/getUserList")

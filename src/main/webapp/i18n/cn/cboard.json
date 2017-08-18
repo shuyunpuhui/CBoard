@@ -254,7 +254,8 @@
       "USER": "用户管理",
       "LOGIN_NAME": "账号",
       "NAME": "姓名",
-      "PASSWORD": "密码"
+      "PASSWORD": "密码",
+      "BRANCH_NAME": "分公司"
     },
     "ROLE": {
       "ROLE": "角色管理",

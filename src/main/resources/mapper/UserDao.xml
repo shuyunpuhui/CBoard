@@ -4,17 +4,17 @@
 
     <update id="save">
         <![CDATA[
-        INSERT INTO dashboard_user(user_id,login_name,user_name,user_password,user_status) VALUES (#{userId},#{loginName},#{userName},#{userPassword},#{userStatus})
+        INSERT INTO dashboard_user(user_id,login_name,user_name,user_password,user_status,branch_name) VALUES (#{userId},#{loginName},#{userName},#{userPassword},#{userStatus},#{branchName})
         ]]>
     </update>
 
     <select id="getUserList" resultType="org.cboard.pojo.DashboardUser">
-        SELECT user_id userId,login_name loginName,user_name userName,user_status userStatus FROM dashboard_user
+        SELECT user_id userId,login_name loginName,user_name userName,user_status userStatus, branch_name branchName FROM dashboard_user
         order by login_name
     </select>
 
     <update id="update" parameterType="org.cboard.pojo.DashboardUser">
-        update dashboard_user set login_name = #{loginName},user_name = #{userName}
+        update dashboard_user set login_name = #{loginName},user_name = #{userName},branch_name = #{branchName}
         <if test="userPassword!=null">
             ,user_password = #{userPassword}
         </if>
@@ -64,7 +64,7 @@
     </select>
 
     <select id="getUserByLoginName" resultType="org.cboard.pojo.DashboardUser">
-        SELECT user_id userId,login_name loginName,user_name userName,user_status userStatus FROM dashboard_user where login_name = #{0}
+        SELECT user_id userId,login_name loginName,user_name userName,user_status userStatus, branch_name branchName FROM dashboard_user where login_name = #{0}
     </select>
 
     <insert id="saveNewUser" >

@@ -13,6 +13,7 @@ public class User extends org.springframework.security.core.userdetails.User {
     private String company;
     private String department;
     private String name;
+    private String branchName;
 
     public User(String username, String password, Collection<? extends GrantedAuthority> authorities) {
         super(username, password, authorities);
@@ -52,6 +53,14 @@ public class User extends org.springframework.security.core.userdetails.User {
 
     public void setUserId(String userId) {
         this.userId = userId;
+    }
+
+    public String getBranchName() {
+        return branchName;
+    }
+
+    public void setBranchName(String branchName) {
+        this.branchName = branchName;
     }
 }
 

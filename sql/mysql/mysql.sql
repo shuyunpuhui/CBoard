@@ -47,6 +47,7 @@ CREATE TABLE dashboard_user (
   user_name varchar(100) DEFAULT NULL,
   user_password varchar(100) DEFAULT NULL,
   user_status varchar(100) DEFAULT NULL,
+  branch_name varchar(100) DEFAULT NULL,
   PRIMARY KEY (user_id)
 );
 

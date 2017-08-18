@@ -9,6 +9,8 @@ import org.cboard.dao.*;
 import org.cboard.dataprovider.DataProviderManager;
 import org.cboard.dataprovider.DataProviderViewManager;
 import org.cboard.dataprovider.config.AggConfig;
+import org.cboard.dataprovider.config.ConfigComponent;
+import org.cboard.dataprovider.config.DimensionConfig;
 import org.cboard.dataprovider.result.AggregateResult;
 import org.cboard.dto.*;
 import org.cboard.pojo.*;
@@ -16,6 +18,7 @@ import org.cboard.services.*;
 import org.cboard.services.job.JobService;
 import org.cboard.services.persist.excel.XlsProcessService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -85,6 +88,12 @@ public class DashboardController {
 
     @Autowired
     private XlsProcessService xlsProcessService;
+
+    @Value("${branch.filter.field}")
+    private String branchFilterField;
+
+    @Value("${admin_user_id}")
+    private String adminUserId;
 
     @RequestMapping(value = "/test")
     public ServiceStatus test(@RequestParam(name = "datasource", required = false) String datasource, @RequestParam(name = "query", required = false) String query) {
@@ -317,6 +326,20 @@ public class DashboardController {
             strParams = Maps.transformValues(queryO, Functions.toStringFunction());
         }
         AggConfig config = ViewAggConfig.getAggConfig(JSONObject.parseObject(cfg, ViewAggConfig.class));
+
+        // 获取当前登录用户
+        User user = authenticationService.getCurrentUser();
+
+        List<ConfigComponent> filters = config.getFilters();
+        for (ConfigComponent configComponent : filters) {
+            DimensionConfig dimensionConfig = (DimensionConfig) configComponent;
+            if (!adminUserId.equals(user.getUserId())
+                    && branchFilterField.equals(dimensionConfig.getColumnName())) {
+                List<String> values = dimensionConfig.getValues();
+                values.add(user.getBranchName());
+            }
+        }
+
         return dataProviderService.queryAggData(datasourceId, strParams, datasetId, config, reload);
     }
 

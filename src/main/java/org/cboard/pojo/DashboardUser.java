@@ -9,6 +9,7 @@ public class DashboardUser {
     private String userName;
     private String userPassword;
     private String userStatus;
+    private String branchName;
 
     public String getUserId() {
         return userId;
@@ -48,5 +49,13 @@ public class DashboardUser {
 
     public void setUserStatus(String userStatus) {
         this.userStatus = userStatus;
+    }
+
+    public String getBranchName() {
+        return branchName;
+    }
+
+    public void setBranchName(String branchName) {
+        this.branchName = branchName;
     }
 }

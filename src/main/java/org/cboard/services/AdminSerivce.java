@@ -43,22 +43,24 @@ public class AdminSerivce {
     @Autowired
     private BoardDao boardDao;
 
-    public String addUser(String userId, String loginName, String userName, String userPassword) {
+    public String addUser(String userId, String loginName, String userName, String userPassword, String branchName) {
         String md5 = Hashing.md5().newHasher().putString(userPassword, Charsets.UTF_8).hash().toString();
         DashboardUser user = new DashboardUser();
         user.setLoginName(loginName);
         user.setUserId(userId);
         user.setUserName(userName);
         user.setUserPassword(md5);
+        user.setBranchName(branchName);
         userDao.save(user);
         return "1";
     }
 
-    public String updateUser(String userId, String loginName, String userName, String userPassword) {
+    public String updateUser(String userId, String loginName, String userName, String userPassword, String branchName) {
         DashboardUser user = new DashboardUser();
         user.setLoginName(loginName);
         user.setUserId(userId);
         user.setUserName(userName);
+        user.setBranchName(branchName);
         if (StringUtils.isNotBlank(userPassword)) {
             String md5 = Hashing.md5().newHasher().putString(userPassword, Charsets.UTF_8).hash().toString();
             user.setUserPassword(md5);
