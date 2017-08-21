@@ -24,9 +24,11 @@ public class DbUserDetailService extends JdbcDaoImpl {
                 String loginname = rs.getString(3);
                 String password = rs.getString(4);
                 boolean enabled = rs.getBoolean(5);
+                String branchName = rs.getString(6);
                 User user = new User(loginname, password, enabled, true, true, true, AuthorityUtils.NO_AUTHORITIES);
                 user.setUserId(userId);
                 user.setName(username);
+                user.setBranchName(branchName);
                 return user;
             }
         });

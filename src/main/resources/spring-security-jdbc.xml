@@ -54,7 +54,7 @@
         </property>
         <property name="usersByUsernameQuery">
             <value>
-                <![CDATA[SELECT user_id,user_name,login_name, user_password, 1 AS enabled
+                <![CDATA[SELECT user_id,user_name,login_name, user_password, 1 AS enabled, branch_name
                            FROM dashboard_user
                           WHERE login_name = ? ]]>
             </value>
