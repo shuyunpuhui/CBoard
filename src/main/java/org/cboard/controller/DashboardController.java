@@ -17,6 +17,8 @@ import org.cboard.pojo.*;
 import org.cboard.services.*;
 import org.cboard.services.job.JobService;
 import org.cboard.services.persist.excel.XlsProcessService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -43,6 +45,8 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/dashboard")
 public class DashboardController {
+
+    private static final Logger LOG = LoggerFactory.getLogger(DashboardController.class);
 
     @Autowired
     private BoardDao boardDao;
@@ -329,6 +333,8 @@ public class DashboardController {
 
         // 获取当前登录用户
         User user = authenticationService.getCurrentUser();
+        LOG.info("==== Query aggregate data, userName: " + user.getName() +
+                ", branchName: " + user.getBranchName());
 
         List<ConfigComponent> filters = config.getFilters();
         for (ConfigComponent configComponent : filters) {
@@ -337,6 +343,7 @@ public class DashboardController {
                     && branchFilterField.equals(dimensionConfig.getColumnName())) {
                 List<String> values = dimensionConfig.getValues();
                 values.add(user.getBranchName());
+                LOG.info("==== Update or insert branch name to filter, branchName: " + user.getBranchName());
             }
         }
 
