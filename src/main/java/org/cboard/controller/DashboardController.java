@@ -340,7 +340,7 @@ public class DashboardController {
         for (ConfigComponent configComponent : filters) {
             DimensionConfig dimensionConfig = (DimensionConfig) configComponent;
             if (!adminUserId.equals(user.getUserId())
-                    && branchFilterField.equals(dimensionConfig.getColumnName())) {
+                    && branchFilterField.toUpperCase().equals(dimensionConfig.getColumnName().toUpperCase())) {
                 List<String> values = dimensionConfig.getValues();
                 values.add(user.getBranchName());
                 LOG.info("==== Update or insert branch name to filter, branchName: " + user.getBranchName());
