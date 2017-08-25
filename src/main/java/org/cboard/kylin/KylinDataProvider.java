@@ -47,7 +47,7 @@ public class KylinDataProvider extends DataProvider implements Aggregatable, Ini
     @DatasourceParameter(label = "Password", type = DatasourceParameter.Type.Password, order = 3)
     private String PASSWORD = "password";
 
-    @DatasourceParameter(label = "{{'DATAPROVIDER.CALCULATE_TYPE'|translate}}", type = DatasourceParameter.Type.Select, order = 4, options = {"NONE", "YOY_MOM", "RETURN_RATE"})
+    @DatasourceParameter(label = "{{'DATAPROVIDER.CALCULATE_TYPE'|translate}}", type = DatasourceParameter.Type.Select, order = 4, options = {"默认计算", "同比环比计算", "回款率计算"})
     private String specialCalculateType = "specialCalculateType";
 
     @QueryParameter(label = "Kylin Project", type = QueryParameter.Type.Input)
