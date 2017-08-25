@@ -13,7 +13,6 @@ import org.cboard.dataprovider.DataProvider;
 import org.cboard.dataprovider.Initializing;
 import org.cboard.dataprovider.aggregator.Aggregatable;
 import org.cboard.dataprovider.annotation.DatasourceParameter;
-import org.cboard.dataprovider.annotation.ProviderName;
 import org.cboard.dataprovider.annotation.QueryParameter;
 import org.cboard.dataprovider.config.*;
 import org.cboard.dataprovider.result.AggregateResult;
@@ -37,7 +36,7 @@ import java.util.stream.Stream;
 /**
  * Created by yfyuan on 2016/8/17.
  */
-@ProviderName(name = "jdbcYoyMom")
+// @ProviderName(name = "jdbcYoyMom")
 public class JdbcBasisDataProvider extends DataProvider implements Aggregatable, Initializing {
 
     private static final Logger LOG = LoggerFactory.getLogger(JdbcBasisDataProvider.class);
@@ -62,6 +61,9 @@ public class JdbcBasisDataProvider extends DataProvider implements Aggregatable,
 
     @DatasourceParameter(label = "{{'DATAPROVIDER.AGGREGATABLE_PROVIDER'|translate}}", type = DatasourceParameter.Type.Checkbox, order = 100)
     private String aggregateProvider = "aggregateProvider";
+
+    @DatasourceParameter(label = "{{'DATAPROVIDER.CALCULATE_TYPE'|translate}}", type = DatasourceParameter.Type.Select, order = 4, options = {"NONE", "YOY_MOM", "RETURN_RATE"})
+    private String specialCalculateType = "specialCalculateType";
 
     @QueryParameter(label = "{{'DATAPROVIDER.JDBC.SQLTEXT'|translate}}", type = QueryParameter.Type.TextArea, order = 1)
     private String SQL = "sql";

@@ -10,7 +10,6 @@ import org.cboard.dataprovider.DataProvider;
 import org.cboard.dataprovider.Initializing;
 import org.cboard.dataprovider.aggregator.Aggregatable;
 import org.cboard.dataprovider.annotation.DatasourceParameter;
-import org.cboard.dataprovider.annotation.ProviderName;
 import org.cboard.dataprovider.annotation.QueryParameter;
 import org.cboard.dataprovider.config.*;
 import org.cboard.dataprovider.result.AggregateResult;
@@ -33,7 +32,7 @@ import java.util.stream.Stream;
 /**
  * Created by yfyuan on 2017/3/6.
  */
-@ProviderName(name = "kylinYoyMom")
+// @ProviderName(name = "kylinYoyMom")
 public class KylinBasisDataProvider extends DataProvider implements Aggregatable, Initializing {
 
     private static final Logger LOG = LoggerFactory.getLogger(KylinBasisDataProvider.class);

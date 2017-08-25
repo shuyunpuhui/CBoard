@@ -45,6 +45,15 @@ public class JdbcDataProvider extends DataProvider implements Aggregatable, Init
     @Value("${dataprovider.resultLimit:200000}")
     private int resultLimit;
 
+    @Value("${return.rate.groupby}")
+    private String returnRateGroupby;
+
+    @Value("${return.rate.divisor}")
+    private String returnRateDivisor;
+
+    @Value("${return.rate.operator.type}")
+    private String returnRateOperatorType;
+
     @DatasourceParameter(label = "{{'DATAPROVIDER.JDBC.DRIVER'|translate}}", type = DatasourceParameter.Type.Input, order = 1)
     private String DRIVER = "driver";
 
@@ -62,6 +71,9 @@ public class JdbcDataProvider extends DataProvider implements Aggregatable, Init
 
     @DatasourceParameter(label = "{{'DATAPROVIDER.AGGREGATABLE_PROVIDER'|translate}}", type = DatasourceParameter.Type.Checkbox, order = 100)
     private String aggregateProvider = "aggregateProvider";
+
+    @DatasourceParameter(label = "{{'DATAPROVIDER.CALCULATE_TYPE'|translate}}", type = DatasourceParameter.Type.Select, order = 4, options = {"默认计算", "同比环比计算", "回款率计算"})
+    private String specialCalculateType = "specialCalculateType";
 
     @QueryParameter(label = "{{'DATAPROVIDER.JDBC.SQLTEXT'|translate}}", type = QueryParameter.Type.TextArea, order = 1)
     private String SQL = "sql";
@@ -370,6 +382,15 @@ public class JdbcDataProvider extends DataProvider implements Aggregatable, Init
 
     @Override
     public AggregateResult queryAggData(AggConfig config) throws Exception {
+
+        // 根据类型判断使用哪个计算逻辑
+        String calculateType = dataSource.get(specialCalculateType);
+        if ("同比环比计算".equals(calculateType)) {
+            return queryAggDataYoyMom(config);
+        } else if ("回款率计算".equals(calculateType)) {
+            return queryAggDataReturnRate(config);
+        }
+
         String exec = getQueryAggDataSql(config);
         List<String[]> list = new LinkedList<>();
         LOG.info(exec);
@@ -405,6 +426,184 @@ public class JdbcDataProvider extends DataProvider implements Aggregatable, Init
         });
         String[][] result = list.toArray(new String[][]{});
         return new AggregateResult(dimensionList, result);
+    }
+
+    /**
+     * 计算同比环比的方法
+     */
+    public AggregateResult queryAggDataYoyMom(AggConfig config) throws Exception {
+        String[] checkRes = checkAndFilter(config);
+        String onlyYear = checkRes[4];
+        int limitDimCnt = "true".equals(onlyYear) ? 2 : 3;
+
+        String exec = getQueryAggDataSql(config);
+        List<String[]> list = new LinkedList<>();
+        LOG.info(exec);
+
+        // 构造TreeMap存储按年月排序的数据
+        TreeMap<String, Object> orderedAggDataMap = new TreeMap<String, Object>();
+
+        try (
+                Connection connection = getConnection();
+                Statement stat = connection.createStatement();
+                ResultSet rs = stat.executeQuery(exec)
+        ) {
+            ResultSetMetaData metaData = rs.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            if (columnCount < limitDimCnt) {
+                throw new Exception("计算同比或环比维度个数不能低于" + limitDimCnt + "个，并且必须保证维度顺序<年, 月, 环比, 同比, 实际数值>");
+            }
+
+            while (rs.next()) {
+                String[] row = new String[columnCount];
+                for (int j = 0; j < columnCount; j++) {
+                    row[j] = rs.getString(j + 1);
+                }
+                list.add(row);
+
+                if ("true".equals(onlyYear)) {
+                    orderedAggDataMap.put(row[0], row);
+                } else {
+                    orderedAggDataMap.put(row[0] + row[1], row);
+                }
+
+            }
+        } catch (Exception e) {
+            LOG.error("ERROR:" + e.getMessage());
+            throw new Exception("ERROR:" + e.getMessage(), e);
+        }
+
+        // recreate a dimension stream
+        Stream<DimensionConfig> dimStream = Stream.concat(config.getColumns().stream(), config.getRows().stream());
+        List<ColumnIndex> dimensionList = dimStream.map(ColumnIndex::fromDimensionConfig).collect(Collectors.toList());
+        int dimSize = dimensionList.size();
+        dimensionList.addAll(config.getValues().stream().map(ColumnIndex::fromValueConfig).collect(Collectors.toList()));
+        IntStream.range(0, dimensionList.size()).forEach(j -> dimensionList.get(j).setIndex(j));
+        list.forEach(row -> {
+            IntStream.range(0, dimSize).forEach(i -> {
+                if (row[i] == null) row[i] = NULL_STRING;
+            });
+        });
+
+        // String[][] result = list.toArray(new String[][]{});
+        String[][] result = getOrderedAggResult(orderedAggDataMap, dimensionList.size(), checkRes);
+
+        // AggregateResult res = new AggregateResult(dimensionList, result);
+        return new AggregateResult(dimensionList, result);
+    }
+
+    /**
+     * 计算回款率方法
+     */
+    public AggregateResult queryAggDataReturnRate(AggConfig config) throws Exception {
+        // prepare SQL
+        String groupby = null;
+        String divisor = null;
+
+        List<ConfigComponent> filters = config.getFilters();
+        Iterator<ConfigComponent> filtersIterator = filters.iterator();
+        while(filtersIterator.hasNext()) {
+            DimensionConfig filterConfig = (DimensionConfig) filtersIterator.next();
+
+            String[] values = filterConfig.getValues().toArray(new String[]{});
+            if (returnRateOperatorType.equals(filterConfig.getFilterType())
+                    && values.length == 2 && values[0].equals(values[1])) {
+
+                if (values[0].equals(returnRateGroupby)) {
+                    groupby = filterConfig.getColumnName();
+                    filtersIterator.remove();
+                } else if (values[0].equals(returnRateDivisor)) {
+                    divisor = filterConfig.getColumnName();
+                    filtersIterator.remove();
+                }
+            }
+        }
+
+        if (groupby == null || divisor == null) {
+            throw new Exception("计算回款率必须配置分组和除数，不懂的请联系相关开发人员! Good luck!");
+        }
+
+        String exec = getQueryAggDataSqlRr(config, groupby, divisor);
+        List<String[]> list = new LinkedList<>();
+        LOG.info("Exec SQL: " + exec);
+
+        try (
+                Connection connection = getConnection();
+                Statement stat = connection.createStatement();
+                ResultSet rs = stat.executeQuery(exec)
+        ) {
+            ResultSetMetaData metaData = rs.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            while (rs.next()) {
+                String[] row = new String[columnCount];
+                for (int j = 0; j < columnCount; j++) {
+                    row[j] = rs.getString(j + 1);
+                }
+                list.add(row);
+            }
+        } catch (Exception e) {
+            LOG.error("ERROR:" + e.getMessage());
+            throw new Exception("ERROR:" + e.getMessage(), e);
+        }
+
+        // recreate a dimension stream
+        Stream<DimensionConfig> dimStream = Stream.concat(config.getColumns().stream(), config.getRows().stream());
+        List<ColumnIndex> dimensionList = dimStream.map(ColumnIndex::fromDimensionConfig).collect(Collectors.toList());
+        int dimSize = dimensionList.size();
+        dimensionList.addAll(config.getValues().stream().map(ColumnIndex::fromValueConfig).collect(Collectors.toList()));
+        IntStream.range(0, dimensionList.size()).forEach(j -> dimensionList.get(j).setIndex(j));
+        list.forEach(row -> {
+            IntStream.range(0, dimSize).forEach(i -> {
+                if (row[i] == null) row[i] = NULL_STRING;
+            });
+        });
+        String[][] result = list.toArray(new String[][]{});
+        return new AggregateResult(dimensionList, result);
+    }
+
+    private String getQueryAggDataSqlRr(AggConfig config, String groupby, String divisor) throws Exception {
+
+        Stream<DimensionConfig> c = config.getColumns().stream();
+        Stream<DimensionConfig> r = config.getRows().stream();
+        Stream<ConfigComponent> f = config.getFilters().stream();
+        Stream<ConfigComponent> filters = Stream.concat(Stream.concat(c, r), f);
+        Map<String, Integer> types = getColumnType();
+        Stream<DimensionConfig> dimStream = Stream.concat(config.getColumns().stream(), config.getRows().stream());
+
+        String dimColsStr = assembleDimColumns(dimStream);
+        String aggColsStr = assembleAggValColumns(config.getValues().stream(), types);
+        String whereStr = assembleSqlFilter(filters, "WHERE");
+        String groupByStr = StringUtils.isBlank(dimColsStr) ? "" : "GROUP BY " + dimColsStr;
+
+        StringJoiner selectColsStr = new StringJoiner(",");
+        if (!StringUtils.isBlank(dimColsStr)) {
+            String newDimColsStr = dimColsStr + ", " + groupby;
+            selectColsStr.add(newDimColsStr);
+        }
+        if (!StringUtils.isBlank(aggColsStr)) {
+            String newAggColsStr = aggColsStr + " AS sum_DIVIDEND, SUM(__view__." + divisor
+                    + ") / COUNT(__view__." + groupby + ") AS sum_count_DIVISOR";
+            selectColsStr.add(newAggColsStr);
+        }
+
+        String extGroupByStr = groupByStr + ", " + groupby;
+
+        String subQuerySql = getAsSubQuery(query.get(SQL));
+        int limitLastIndex = subQuerySql.toUpperCase().lastIndexOf("LIMIT");
+        if (limitLastIndex >= 0) {
+            subQuerySql = subQuerySql.substring(0, limitLastIndex);
+        }
+
+        String fsql = "\nSELECT %s \n FROM (\n%s\n) __view__ \n %s \n %s";
+        String exec = String.format(fsql, selectColsStr, subQuerySql, whereStr, extGroupByStr);
+
+        String extDimColsStr = dimColsStr.replace("__view__", "__ext_view__");
+
+        String extSelectStr = extDimColsStr + ",\n round(100 * SUM(__ext_view__.sum_DIVIDEND) / __ext_view__.sum_count_DIVISOR, 2) AS RETURN_RATE";
+        String extSql = "\n SELECT %s \n FROM (\n%s\n) __ext_view__ \n %s";
+        String extExec = String.format(extSql, extSelectStr, exec, groupByStr);
+
+        return extExec;
     }
 
     private String getQueryAggDataSql(AggConfig config) throws Exception {
