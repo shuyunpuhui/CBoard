@@ -599,7 +599,7 @@ public class JdbcDataProvider extends DataProvider implements Aggregatable, Init
 
         String extDimColsStr = dimColsStr.replace("__view__", "__ext_view__");
 
-        String extSelectStr = extDimColsStr + ",\n round(100 * SUM(__ext_view__.sum_DIVIDEND) / __ext_view__.sum_count_DIVISOR, 2) AS RETURN_RATE";
+        String extSelectStr = extDimColsStr + ",\n round(100 * SUM(__ext_view__.sum_DIVIDEND) / SUM(__ext_view__.sum_count_DIVISOR), 2) AS RETURN_RATE";
         String extSql = "\n SELECT %s \n FROM (\n%s\n) __ext_view__ \n %s";
         String extExec = String.format(extSql, extSelectStr, exec, groupByStr);
 
