@@ -47,6 +47,9 @@ public class KylinDataProvider extends DataProvider implements Aggregatable, Ini
     @DatasourceParameter(label = "Password", type = DatasourceParameter.Type.Password, order = 3)
     private String PASSWORD = "password";
 
+    @DatasourceParameter(label = "{{'DATAPROVIDER.CALCULATE_TYPE'|translate}}", type = DatasourceParameter.Type.Select, order = 4, options = {"NONE", "YOY_MOM", "RETURN_RATE"})
+    private String specialCalculateType = "specialCalculateType";
+
     @QueryParameter(label = "Kylin Project", type = QueryParameter.Type.Input)
     private String PROJECT = "project";
 
@@ -283,6 +286,15 @@ public class KylinDataProvider extends DataProvider implements Aggregatable, Ini
 
     @Override
     public AggregateResult queryAggData(AggConfig config) throws Exception {
+
+        // 根据类型判断使用哪个计算逻辑
+        String calculateType = dataSource.get(specialCalculateType);
+        if ("同比环比计算".equals(calculateType)) {
+            return queryAggDataYoyMom(config);
+        } else if ("回款率计算".equals(calculateType)) {
+            return null;
+        }
+
         String exec = getQueryAggDataSql(dataSource, query, config);
         List<String[]> list = new LinkedList<>();
         LOG.info(exec);
@@ -317,6 +329,60 @@ public class KylinDataProvider extends DataProvider implements Aggregatable, Ini
             });
         });
         String[][] result = list.toArray(new String[][]{});
+        return new AggregateResult(dimensionList, result);
+    }
+
+    public AggregateResult queryAggDataYoyMom(AggConfig config) throws Exception {
+        String[] checkRes = checkAndFilter(config);
+        String onlyYear = checkRes[4];
+
+        String exec = getQueryAggDataSql(dataSource, query, config);
+        List<String[]> list = new LinkedList<>();
+        LOG.info(exec);
+
+        // 构造TreeMap存储按年月排序的数据
+        TreeMap<String, Object> orderedAggDataMap = new TreeMap<String, Object>();
+
+        try (
+                Connection connection = getConnection();
+                Statement stat = connection.createStatement();
+                ResultSet rs = stat.executeQuery(exec)
+        ) {
+            ResultSetMetaData metaData = rs.getMetaData();
+            int columnCount = metaData.getColumnCount();
+            while (rs.next()) {
+                String[] row = new String[columnCount];
+                for (int j = 0; j < columnCount; j++) {
+                    row[j] = rs.getString(j + 1);
+                }
+                list.add(row);
+
+                if ("true".equals(onlyYear)) {
+                    orderedAggDataMap.put(row[0], row);
+                } else {
+                    orderedAggDataMap.put(row[0] + row[1], row);
+                }
+            }
+        } catch (Exception e) {
+            LOG.error("ERROR:" + e.getMessage());
+            throw new Exception("ERROR:" + e.getMessage(), e);
+        }
+
+        // recreate a dimension stream
+        Stream<DimensionConfig> dimStream = Stream.concat(config.getColumns().stream(), config.getRows().stream());
+        List<ColumnIndex> dimensionList = dimStream.map(ColumnIndex::fromDimensionConfig).collect(Collectors.toList());
+        int dimSize = dimensionList.size();
+        dimensionList.addAll(config.getValues().stream().map(ColumnIndex::fromValueConfig).collect(Collectors.toList()));
+        IntStream.range(0, dimensionList.size()).forEach(j -> dimensionList.get(j).setIndex(j));
+        list.forEach(row -> {
+            IntStream.range(0, dimSize).forEach(i -> {
+                if (row[i] == null) row[i] = NULL_STRING;
+            });
+        });
+
+        // String[][] result = list.toArray(new String[][]{});
+        String[][] result = getOrderedAggResult(orderedAggDataMap, dimensionList.size(), checkRes);
+
         return new AggregateResult(dimensionList, result);
     }
 
