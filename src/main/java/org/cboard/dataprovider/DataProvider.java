@@ -15,6 +15,7 @@ import org.cboard.dataprovider.result.AggregateResult;
 import org.cboard.util.NaturalOrderComparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.text.DecimalFormat;
 import java.text.SimpleDateFormat;
@@ -36,6 +37,9 @@ public abstract class DataProvider {
 
     public static final String NULL_STRING = "#NULL";
     private static final Logger logger = LoggerFactory.getLogger(DataProvider.class);
+
+    @Value("${dim.values.count.limit:1000}")
+    private int dimValuesCntLimit;
 
     static {
         AviatorEvaluator.addFunction(new NowFunction());
@@ -86,7 +90,7 @@ public abstract class DataProvider {
                 .map(member -> {
                     return Objects.isNull(member) ? NULL_STRING : member;
                 })
-                .sorted(new NaturalOrderComparator()).limit(1000).toArray(String[]::new);
+                .sorted(new NaturalOrderComparator()).limit(dimValuesCntLimit).toArray(String[]::new);
     }
 
     public final String[] getColumn(boolean reload) throws Exception {

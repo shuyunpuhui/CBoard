@@ -562,6 +562,11 @@ public class JdbcDataProvider extends DataProvider implements Aggregatable, Init
     }
 
     private String getQueryAggDataSqlRr(AggConfig config, String groupby, String divisor) throws Exception {
+        List<ValueConfig> values = config.getValues();
+        ValueConfig extValueConfig = null;
+        if (values.size() == 2) {
+            extValueConfig = values.remove(1);
+        }
 
         Stream<DimensionConfig> c = config.getColumns().stream();
         Stream<DimensionConfig> r = config.getRows().stream();
@@ -599,7 +604,13 @@ public class JdbcDataProvider extends DataProvider implements Aggregatable, Init
 
         String extDimColsStr = dimColsStr.replace("__view__", "__ext_view__");
 
-        String extSelectStr = extDimColsStr + ",\n round(100 * SUM(__ext_view__.sum_DIVIDEND) / SUM(__ext_view__.sum_count_DIVISOR), 2) AS RETURN_RATE";
+        String extSelectStr = extDimColsStr + ",\n " +
+                "round(100 * SUM(__ext_view__.sum_DIVIDEND) / SUM(__ext_view__.sum_count_DIVISOR), 2) AS RETURN_RATE";
+        if (extValueConfig != null) {
+            extSelectStr += ",sum_DIVIDEND ";
+            config.getValues().add(extValueConfig);
+        }
+
         String extSql = "\n SELECT %s \n FROM (\n%s\n) __ext_view__ \n %s";
         String extExec = String.format(extSql, extSelectStr, exec, groupByStr);
 
