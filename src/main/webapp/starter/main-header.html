@@ -3,7 +3,7 @@
     <!-- mini logo for sidebar mini 50x50 pixels -->
     <span class="logo-mini"><b>一诺</b></span>
     <!-- logo for regular state and mobile devices -->
-    <span class="logo-lg"><b>一诺</b>银华</span>
+    <span class="logo-lg"><b>一诺银华</b></span>
 </a>
 
 <!-- Header Navbar -->
@@ -29,8 +29,9 @@
                     <li class="user-header">
                         <img src="{{user.avatar}}" class="img-circle">
                         <p>
-                            {{user.username + ' - ' + user.company + ' ' + user.department}}
-                            <small>{{user.userId}}</small>
+                            {{ user.username + ' - ' + user.name}}
+                            <span ng-if="user.branchName">{{ ' - ' + user.branchName  }}</span>
+                            <!--<small>{{user.userId}}</small>-->
                         </p>
                     </li>
                     <!-- Menu Body -->
@@ -51,7 +52,7 @@
                     <!-- Menu Footer-->
                     <li class="user-footer">
                         <div class="pull-left">
-                            <div class="btn btn-default btn-flat" ng-click="changePwd()">Change Password</div>
+                            <div class="btn btn-default btn-flat" ng-click="changePwd()">{{ 'HEADER.CHANGE_PASSWORD'|translate }}</div>
                         </div>
                         <div class="pull-right">
                             <a href="j_spring_cas_security_logout" class="btn btn-default btn-flat">{{'HEADER.SIGN_OUT'|translate}}</a>

@@ -51,7 +51,13 @@
     "SHARE_RESOURCE": "资源分享"
   },
   "HEADER": {
-    "SIGN_OUT": "注销"
+    "SIGN_OUT": "注销",
+    "CHANGE_PASSWORD": "修改密码"
+  },
+  "PASSWORD": {
+    "CURRENT": "原始密码",
+    "NEW": "新密码",
+    "CONFIRM": "确认密码"
   },
   "DASHBOARD": {
     "PARAM": {

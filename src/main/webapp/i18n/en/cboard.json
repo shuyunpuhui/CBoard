@@ -51,7 +51,13 @@
     "SHARE_RESOURCE": "Share Resource"
   },
   "HEADER": {
-    "SIGN_OUT": "SignOut"
+    "SIGN_OUT": "SignOut",
+    "CHANGE_PASSWORD": "Change password"
+  },
+  "PASSWORD": {
+    "CURRENT": "Current Password",
+    "NEW": "New Password",
+    "CONFIRM": "Confirm Password"
   },
   "DASHBOARD": {
     "PARAM": {
