@@ -2,6 +2,7 @@ package org.cboard.controller;
 
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.base.Functions;
+import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
@@ -342,7 +343,14 @@ public class DashboardController {
             if (!adminUserId.equals(user.getUserId())
                     && branchFilterField.toUpperCase().equals(dimensionConfig.getColumnName().toUpperCase())) {
                 List<String> values = dimensionConfig.getValues();
-                values.add(user.getBranchName());
+                String branchName = user.getBranchName();
+                if (!Strings.isNullOrEmpty(branchName)) {
+                    String[] branchArray = branchName.split("\\|");
+                    for (String branch : branchArray) {
+                        values.add(branch);
+                    }
+                }
+
                 LOG.info("==== Update or insert branch name to filter, branchName: " + user.getBranchName());
             }
         }
