@@ -343,7 +343,7 @@ public class DashboardController {
             if (!adminUserId.equals(user.getUserId())
                     && branchFilterField.toUpperCase().equals(dimensionConfig.getColumnName().toUpperCase())) {
                 List<String> values = dimensionConfig.getValues();
-                String branchName = user.getBranchName();
+                String branchName = user.getBranchName().trim();
                 if (!Strings.isNullOrEmpty(branchName)) {
                     String[] branchArray = branchName.split("\\|");
                     for (String branch : branchArray) {
