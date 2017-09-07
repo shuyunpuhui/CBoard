@@ -1,5 +1,6 @@
 package org.cboard.controller;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.base.Functions;
 import com.google.common.base.Strings;
@@ -35,9 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.servlet.http.HttpServletResponse;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -337,6 +336,20 @@ public class DashboardController {
         LOG.info("==== Query aggregate data, userName: " + user.getName() +
                 ", branchName: " + user.getBranchName());
 
+        List finalValues = null;
+        Map map = JSONObject.parseObject(cfg, HashMap.class);
+        JSONArray filtersJSONArray = (JSONArray) map.get("filters");
+        for (Object obj : filtersJSONArray) {
+            JSONObject jsonObject = (JSONObject) obj;
+            String columnName = (String) jsonObject.get("columnName");
+            if (columnName.toUpperCase().equals(branchFilterField.toUpperCase())) {
+                JSONArray ja = (JSONArray) jsonObject.get("values");
+                if (ja.size() > 0) {
+                    finalValues = Arrays.asList(ja.toArray());
+                }
+            }
+        }
+
         List<ConfigComponent> filters = config.getFilters();
         for (ConfigComponent configComponent : filters) {
             DimensionConfig dimensionConfig = (DimensionConfig) configComponent;
@@ -344,11 +357,26 @@ public class DashboardController {
                     && branchFilterField.toUpperCase().equals(dimensionConfig.getColumnName().toUpperCase())) {
                 List<String> values = dimensionConfig.getValues();
                 String branchName = user.getBranchName();
+
                 if (!Strings.isNullOrEmpty(branchName)) {
                     branchName = branchName.trim();
                     String[] branchArray = branchName.split("\\|");
-                    for (String branch : branchArray) {
-                        values.add(branch);
+
+                    if (values.size() == 0 && finalValues != null) {
+                        continue;
+                    }
+
+                    if (values.size() > 0) {   // 交集
+                        List<String> branchList = Arrays.asList(branchArray);
+                        values.retainAll(branchList);
+
+                        if (values.size() == 0) {  // 交集为空，就加个
+                            values.add("__UNKNOWN__");
+                        }
+                    } else {   // 自定义filter为空，就把所有的分公司加进去
+                        for (String branch : branchArray) {
+                            values.add(branch);
+                        }
                     }
                 }
 
