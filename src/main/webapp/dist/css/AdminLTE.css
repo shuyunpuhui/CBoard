@@ -3365,10 +3365,24 @@ table.text-center th {
 .register-logo a {
   color: #444;
 }
-.login-page,
+
 .register-page {
   background: #d2d6de;
 }
+
+.login-page {
+  background: url("../img/login_bg.jpeg") center no-repeat;
+  background-size: cover;
+}
+
+.login-logo-show {
+  margin: 50px;
+  width: 179px;
+  height: 52px;
+  background: url("../img/logo.png") no-repeat center;
+  background-size: cover;
+}
+
 .login-box,
 .register-box {
   width: 360px;
@@ -3386,7 +3400,7 @@ table.text-center th {
 }
 .login-box-body,
 .register-box-body {
-  background: #fff;
+  background: rgba(255,255,255,0.7);
   padding: 20px;
   border-top: 0;
   color: #666;
